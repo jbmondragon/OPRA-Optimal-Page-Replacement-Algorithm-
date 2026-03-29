@@ -1,5 +1,7 @@
 package gui;
 
+import algorithms.PageReplacementSimulator;
+import algorithms.SimulationResult;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
@@ -15,32 +17,25 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
-import src.*;
 
 public class Page extends JPanel {
 
     private Mainframe mainframe;
     private JComboBox<String> algoCombo;
-
-    private JPanel quantumPanel;
-    private JTextField quantumField;
-
-    // Priority toggle
-    private JPanel priorityPanel;
-    private JCheckBox higherIsHigherCheck;
-
+    private JTextField textField;
+    private JTextField frameField;
     private static final int ICON_SIZE = 26;
-
     private static final String[] ALGORITHMS = {
             "FIFO",
             "LRU",
-            "OPT",
-            "Second Chance Algorithm",
-            "Enhanced Second Chance Algorithm",
+            "Optimal",
+            "Second Chance",
+            "Enhanced Second Chance",
             "LFU",
             "MFU",
             "All Algorithms"
     };
+    private final PageReplacementSimulator simulator = new PageReplacementSimulator();
 
     /** Construct schedule panel bound to parent frame. */
     public Page(Mainframe frame) {
@@ -105,8 +100,7 @@ public class Page extends JPanel {
         leftCard.setBackground(Color.WHITE);
         leftCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(185, 185, 185), 1, true),
-                BorderFactory.createEmptyBorder(0, 0, 14, 0)
-        ));
+                BorderFactory.createEmptyBorder(0, 0, 14, 0)));
 
         JPanel procHeader = new JPanel(new BorderLayout());
         procHeader.setBackground(new Color(81, 97, 113));
@@ -132,21 +126,21 @@ public class Page extends JPanel {
         JPanel inputPanel = new JPanel();
         inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.Y_AXIS));
         inputPanel.setBackground(Color.WHITE);
-        inputPanel.setBorder(new EmptyBorder(30, 10, 10, 10)); 
+        inputPanel.setBorder(new EmptyBorder(30, 10, 10, 10));
 
         JLabel textLabel = new JLabel("Reference String");
         textLabel.setFont(new Font("Arial", Font.BOLD, 16));
         textLabel.setForeground(new Color(81, 97, 113));
-        textLabel.setAlignmentX(Component.CENTER_ALIGNMENT); 
+        textLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JTextField textField = new JTextField();
-        textField.setPreferredSize(new Dimension(650, 50)); 
-        textField.setMaximumSize(new Dimension(650, 50)); 
+        textField = new JTextField();
+        textField.setPreferredSize(new Dimension(650, 50));
+        textField.setMaximumSize(new Dimension(650, 50));
         textField.setFont(new Font("Arial", Font.BOLD, 16));
         textField.setForeground(new Color(81, 97, 113));
-        textField.setHorizontalAlignment(JTextField.LEFT); 
-        textField.setAlignmentX(Component.CENTER_ALIGNMENT);  
-        textField.setBackground(new Color(245, 248, 252)); 
+        textField.setHorizontalAlignment(JTextField.LEFT);
+        textField.setAlignmentX(Component.CENTER_ALIGNMENT);
+        textField.setBackground(new Color(245, 248, 252));
         textField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(185, 185, 185), 1, true),
                 BorderFactory.createEmptyBorder(0, 20, 0, 20) // Internal text padding
@@ -155,15 +149,15 @@ public class Page extends JPanel {
         JLabel frameLabel = new JLabel("Frame Size");
         frameLabel.setFont(new Font("Arial", Font.BOLD, 16));
         frameLabel.setForeground(new Color(81, 97, 113));
-        frameLabel.setAlignmentX(Component.CENTER_ALIGNMENT); 
+        frameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JTextField frameField = new JTextField();
-        frameField.setPreferredSize(new Dimension(120, 50)); 
-        frameField.setMaximumSize(new Dimension(120, 50)); 
+        frameField = new JTextField();
+        frameField.setPreferredSize(new Dimension(120, 50));
+        frameField.setMaximumSize(new Dimension(120, 50));
         frameField.setFont(new Font("Arial", Font.BOLD, 16));
         frameField.setForeground(new Color(81, 97, 113));
-        frameField.setHorizontalAlignment(JTextField.CENTER); 
-        frameField.setAlignmentX(Component.CENTER_ALIGNMENT);  
+        frameField.setHorizontalAlignment(JTextField.CENTER);
+        frameField.setAlignmentX(Component.CENTER_ALIGNMENT);
         frameField.setBackground(new Color(245, 248, 252));
         frameField.setBorder(textField.getBorder());
 
@@ -313,7 +307,7 @@ public class Page extends JPanel {
     }
 
     /** Populate table with random process data for testing. */
-    private void randomFill(JTextField textField){
+    private void randomFill(JTextField textField) {
         Random rand = new Random();
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 40; i++) {
@@ -322,27 +316,123 @@ public class Page extends JPanel {
         textField.setText(sb.toString().trim());
     }
 
-    /** Import processes from a selected file (.txt, .csv, .xlsx). */
+    /**
+     * Import reference string and frame size from a selected file (.txt, .csv,
+     * .xlsx).
+     */
     private void importFile() {
         JFileChooser fc = new JFileChooser();
-        // start in the workspace dataset folder if it exists
         File dataDir = new File("dataset");
         if (dataDir.exists() && dataDir.isDirectory()) {
             fc.setCurrentDirectory(dataDir);
         }
-        fc.setDialogTitle("Import Process List (.txt/.csv/.xlsx)");
+        fc.setDialogTitle("Import Reference String (.txt/.csv/.xlsx)");
         fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                 "Text/CSV/XLSX files", "txt", "csv", "xlsx"));
         if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION)
             return;
         File file = fc.getSelectedFile();
         String name = file.getName().toLowerCase();
-        
+        try {
+            if (name.endsWith(".txt") || name.endsWith(".csv")) {
+                java.util.List<String> lines = new java.util.ArrayList<>();
+                try (java.util.Scanner sc = new java.util.Scanner(file)) {
+                    while (sc.hasNextLine()) {
+                        String line = sc.nextLine().trim();
+                        if (!line.isEmpty())
+                            lines.add(line);
+                    }
+                }
+                if (lines.isEmpty()) {
+                    error("File is empty.");
+                    return;
+                }
+                // Assume first non-empty line is reference string, second (if present) is frame
+                // size
+                textField.setText(lines.get(0));
+                if (lines.size() > 1)
+                    frameField.setText(lines.get(1));
+            } else if (name.endsWith(".xlsx")) {
+                java.util.List<String[]> rows = readXlsx(file);
+                if (rows.isEmpty()) {
+                    error("Excel file is empty.");
+                    return;
+                }
+                // Assume first row, first cell is reference string, second cell (if present) is
+                // frame size
+                String[] firstRow = rows.get(0);
+                if (firstRow.length > 0)
+                    textField.setText(firstRow[0]);
+                if (firstRow.length > 1)
+                    frameField.setText(firstRow[1]);
+            } else {
+                error("Unsupported file type.");
+            }
+        } catch (Exception ex) {
+            error("Failed to import: " + ex.getMessage());
+        }
     }
 
     /** Validate table data, create jobs, run selected scheduling algorithm. */
     private void runSimulation() {
-        
+        // Parse reference string
+        String refStr = textField.getText().trim();
+        String[] refParts = refStr.split("\\s+");
+        int[] referenceString = new int[refParts.length];
+        for (int i = 0; i < refParts.length; i++) {
+            try {
+                referenceString[i] = Integer.parseInt(refParts[i]);
+            } catch (NumberFormatException e) {
+                error("Reference string must contain only integers.");
+                return;
+            }
+        }
+
+        // Parse frame size
+        int frameSize;
+        try {
+            frameSize = Integer.parseInt(frameField.getText().trim());
+        } catch (NumberFormatException e) {
+            error("Frame size must be an integer.");
+            return;
+        }
+
+        // Validate input
+        if (!simulator.validateInput(referenceString, frameSize)) {
+            error("Reference string must be 10-40 integers (0-20). Frame size must be 3-10.");
+            return;
+        }
+
+        String selectedAlgo = (String) algoCombo.getSelectedItem();
+        if (selectedAlgo == null) {
+            error("Please select an algorithm.");
+            return;
+        }
+
+        if (selectedAlgo.equals("All Algorithms")) {
+            java.util.Map<String, SimulationResult> results = simulator.runAllAlgorithms(referenceString, frameSize);
+            // Show results for all algorithms (for now, just show the first one)
+            // You can extend this to show a comparison view
+            SimulationResult firstResult = results.values().iterator().next();
+            mainframe.getResultPanel().displayResult(firstResult.getAlgorithmName(), firstResult);
+            mainframe.showCard("RESULT");
+        } else {
+            // Map GUI names to simulator names
+            String algoName = selectedAlgo;
+            if (algoName.equals("OPT"))
+                algoName = "Optimal";
+            if (algoName.equals("Second Chance Algorithm"))
+                algoName = "Second Chance";
+            if (algoName.equals("Enhanced Second Chance Algorithm"))
+                algoName = "Enhanced Second Chance";
+            SimulationResult result = simulator.runAlgorithm(algoName, referenceString, frameSize);
+            if (result == null) {
+                error("Algorithm not found.");
+                return;
+            }
+            mainframe.getResultPanel().displayResult(result.getAlgorithmName(), result);
+            mainframe.showCard("RESULT");
+        }
     }
 
     // =========================================================================
@@ -350,15 +440,17 @@ public class Page extends JPanel {
     // =========================================================================
     /** Factory that returns a Scheduler implementation based on algorithm name. */
     // private Scheduler createScheduler(String algorithmName, int quantumTime) {
-    //     return switch (algorithmName) {
-    //         case "First Come First Serve" -> new FCFS();
-    //         case "Round Robin" -> new RoundRobin(quantumTime);
-    //         case "SJF (Preemptive)" -> new SJFPreemptive();
-    //         case "SJF (Non-preemptive)" -> new SJFNonPreemptive();
-    //         case "Priority (Preemptive)" -> new PriorityPreemptive(higherIsHigherCheck.isSelected());
-    //         case "Priority (Non-preemptive)" -> new PriorityNonPreemptive(higherIsHigherCheck.isSelected());
-    //         default -> null;
-    //     };
+    // return switch (algorithmName) {
+    // case "First Come First Serve" -> new FCFS();
+    // case "Round Robin" -> new RoundRobin(quantumTime);
+    // case "SJF (Preemptive)" -> new SJFPreemptive();
+    // case "SJF (Non-preemptive)" -> new SJFNonPreemptive();
+    // case "Priority (Preemptive)" -> new
+    // PriorityPreemptive(higherIsHigherCheck.isSelected());
+    // case "Priority (Non-preemptive)" -> new
+    // PriorityNonPreemptive(higherIsHigherCheck.isSelected());
+    // default -> null;
+    // };
     // }
 
     // =========================================================================
