@@ -14,6 +14,10 @@ public class PageReplacementSimulator {
         algorithms.add(new LRUAlgorithm());
         algorithms.add(new OptimalAlgorithm());
         algorithms.add(new ClockAlgorithm());
+        algorithms.add(new SecondChanceAlgorithm());
+        algorithms.add(new EnhancedSecondChanceAlgorithm());
+        algorithms.add(new LFUAlgorithm());
+        algorithms.add(new MFUAlgorithm());
 
         random = new Random();
     }

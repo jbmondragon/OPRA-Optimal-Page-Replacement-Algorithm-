@@ -411,13 +411,9 @@ public class Page extends JPanel {
 
         if (selectedAlgo.equals("All Algorithms")) {
             java.util.Map<String, SimulationResult> results = simulator.runAllAlgorithms(referenceString, frameSize);
-            // Show results for all algorithms (for now, just show the first one)
-            // You can extend this to show a comparison view
-            SimulationResult firstResult = results.values().iterator().next();
-            mainframe.getResultPanel().displayResult(firstResult.getAlgorithmName(), firstResult);
+            mainframe.getResultPanel().displayMultipleResults(results);
             mainframe.showCard("RESULT");
         } else {
-            // Map GUI names to simulator names
             String algoName = selectedAlgo;
             if (algoName.equals("OPT"))
                 algoName = "Optimal";
