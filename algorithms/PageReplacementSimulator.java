@@ -1,4 +1,3 @@
-// PageReplacementSimulator.java
 package algorithms;
 
 import java.io.*;
@@ -10,10 +9,10 @@ public class PageReplacementSimulator {
 
     public PageReplacementSimulator() {
         algorithms = new ArrayList<>();
+
         algorithms.add(new FIFOAlgorithm());
         algorithms.add(new LRUAlgorithm());
         algorithms.add(new OptimalAlgorithm());
-        algorithms.add(new ClockAlgorithm());
         algorithms.add(new SecondChanceAlgorithm());
         algorithms.add(new EnhancedSecondChanceAlgorithm());
         algorithms.add(new LFUAlgorithm());
@@ -91,11 +90,12 @@ public class PageReplacementSimulator {
     // Run single algorithm
     public SimulationResult runAlgorithm(String algorithmName, int[] referenceString, int frameSize) {
         for (Algorithm algorithm : algorithms) {
+            // This searches the registered list. If the algorithm wasn't added above, this returns null!
             if (algorithm.getClass().getSimpleName().replace("Algorithm", "").equals(algorithmName)) {
                 return algorithm.simulate(referenceString, frameSize);
             }
         }
-        return null;
+        return null; 
     }
 
     // Save results to file
