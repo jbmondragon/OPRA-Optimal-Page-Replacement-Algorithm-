@@ -185,7 +185,8 @@ public class Result extends JPanel {
 
         JFileChooser saver = new JFileChooser();
         saver.setDialogTitle("Save " + algoName + " Result as Image");
-        saver.setSelectedFile(new File(algoName.replaceAll("[^a-zA-Z0-9_-]", "_") + "_result.png"));
+        String timestamp = new java.text.SimpleDateFormat("MMddyy_HHmmss").format(new java.util.Date());
+        saver.setSelectedFile(new File(timestamp + "_PG.png"));
         int userSelection = saver.showSaveDialog(this);
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File file = saver.getSelectedFile();
