@@ -17,12 +17,12 @@ public class Result extends JPanel {
     private JPanel resultContainer;
     private JSlider speedSlider;
     private javax.swing.Timer animTimer;
-    
+
     private Queue<SimulationResult> resultsQueue = new LinkedList<>();
     private PageReplacementResultPanel currentPanel;
     private JPanel currentButtonPanel; // Tracks the active algorithm's button panel
     private int currentStep = 0;
-    private int currentMaxSteps = 0; 
+    private int currentMaxSteps = 0;
 
     public Result(Mainframe frame) {
         this.mainframe = frame;
@@ -30,11 +30,11 @@ public class Result extends JPanel {
         setBackground(new Color(173, 196, 220));
 
         add(createHeader(), BorderLayout.NORTH);
-        
+
         resultContainer = new JPanel();
         resultContainer.setLayout(new BoxLayout(resultContainer, BoxLayout.Y_AXIS));
         resultContainer.setOpaque(false);
-        
+
         JScrollPane scroll = new JScrollPane(resultContainer);
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
@@ -58,7 +58,7 @@ public class Result extends JPanel {
         JLabel speedLabel = new JLabel("Timer Speed: ");
         speedLabel.setForeground(Color.WHITE);
         speedLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        
+
         speedSlider = new JSlider(JSlider.HORIZONTAL, 1, 10, 2);
         speedSlider.setOpaque(false);
         speedSlider.setForeground(Color.WHITE);
@@ -68,10 +68,10 @@ public class Result extends JPanel {
             int speed = speedSlider.getValue();
             animTimer.setDelay(1000 / speed);
         });
-        
+
         speedPanel.add(speedLabel);
         speedPanel.add(speedSlider);
-        
+
         // Right side: Back Button
         JButton backBtn = new JButton("← Return");
         backBtn.setFocusPainted(false);
@@ -85,7 +85,7 @@ public class Result extends JPanel {
 
         header.add(speedPanel, BorderLayout.WEST);
         header.add(backBtn, BorderLayout.EAST);
-        
+
         return header;
     }
 
@@ -97,22 +97,24 @@ public class Result extends JPanel {
     }
 
     private void playNextAlgorithm() {
-        if (resultsQueue.isEmpty()) return;
+        if (resultsQueue.isEmpty())
+            return;
 
         SimulationResult next = resultsQueue.poll();
         currentStep = 0;
-        currentMaxSteps = next.getSteps().size(); 
+        currentMaxSteps = next.getSteps().size();
         currentPanel = new PageReplacementResultPanel(next);
-        
-        // Lock these variables locally so the button lambdas target the correct algorithm
+
+        // Lock these variables locally so the button lambdas target the correct
+        // algorithm
         PageReplacementResultPanel panelRef = currentPanel;
         String algoNameRef = next.getAlgorithmName();
-        
+
         // Wrap panel in a white box like the mockup
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(Color.WHITE);
         wrapper.setBorder(new EmptyBorder(15, 15, 15, 15));
-        
+
         // --- Individual PDF & Image Buttons attached below the grid ---
         currentButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         currentButtonPanel.setOpaque(false);
@@ -134,18 +136,18 @@ public class Result extends JPanel {
 
         currentButtonPanel.add(downloadPngBtn);
         currentButtonPanel.add(downloadPdfBtn);
-        
+
         wrapper.add(currentButtonPanel, BorderLayout.SOUTH);
-        
+
         JScrollPane innerScroll = new JScrollPane(currentPanel);
         innerScroll.setBorder(null);
         wrapper.add(innerScroll, BorderLayout.CENTER);
 
         resultContainer.add(wrapper);
         resultContainer.add(Box.createVerticalStrut(20));
-        
+
         revalidate();
-        
+
         // Set initial timer speed based on slider before starting
         animTimer.setDelay(1000 / speedSlider.getValue());
         animTimer.start();
@@ -160,7 +162,7 @@ public class Result extends JPanel {
             if (currentButtonPanel != null) {
                 currentButtonPanel.setVisible(true);
             }
-            
+
             animTimer.stop();
             if (!resultsQueue.isEmpty()) {
                 playNextAlgorithm();
@@ -172,27 +174,31 @@ public class Result extends JPanel {
         // Temporarily reveal all columns so the screenshot captures the final state
         int prevCols = panel.getVisibleColumns();
         panel.setVisibleColumns(panel.getTotalColumns());
-        
+
         BufferedImage img = new BufferedImage(panel.getWidth(), panel.getHeight(), BufferedImage.TYPE_INT_RGB);
         Graphics2D g2 = img.createGraphics();
         panel.paint(g2);
         g2.dispose();
-        
+
         // Restore animation state
         panel.setVisibleColumns(prevCols);
 
         JFileChooser saver = new JFileChooser();
         saver.setDialogTitle("Save " + algoName + " Result as Image");
-        if (saver.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+        saver.setSelectedFile(new File(algoName.replaceAll("[^a-zA-Z0-9_-]", "_") + "_result.png"));
+        int userSelection = saver.showSaveDialog(this);
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File file = saver.getSelectedFile();
+            if (!file.getName().toLowerCase().endsWith(".png")) {
+                file = new File(file.getAbsolutePath() + ".png");
+            }
             try {
-                String filePath = saver.getSelectedFile().getAbsolutePath();
-                if (!filePath.toLowerCase().endsWith(".png")) {
-                    filePath += ".png";
-                }
-                ImageIO.write(img, "png", new File(filePath));
-                JOptionPane.showMessageDialog(this, "Image saved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-            } catch (Exception ex) { 
-                JOptionPane.showMessageDialog(this, "Error saving image: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                ImageIO.write(img, "png", file);
+                JOptionPane.showMessageDialog(this, "Image saved to " + file.getAbsolutePath(), "Success",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error saving image: " + ex.getMessage(), "Error",
+                        JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -201,32 +207,35 @@ public class Result extends JPanel {
         // Temporarily reveal all columns
         int prevCols = panel.getVisibleColumns();
         panel.setVisibleColumns(panel.getTotalColumns());
-        
+
         PrinterJob job = PrinterJob.getPrinterJob();
         job.setJobName("Export " + algoName + " Result");
         job.setPrintable((g, pf, page) -> {
-            if (page > 0) return Printable.NO_SUCH_PAGE;
+            if (page > 0)
+                return Printable.NO_SUCH_PAGE;
             Graphics2D g2 = (Graphics2D) g;
             g2.translate(pf.getImageableX(), pf.getImageableY());
-            
             // Scale the grid to fit the width of the PDF page
             double scale = pf.getImageableWidth() / panel.getWidth();
-            if (scale > 1.0) scale = 1.0; // Don't scale up if it's already small enough
-            
+            if (scale > 1.0)
+                scale = 1.0; // Don't scale up if it's already small enough
             g2.scale(scale, scale);
             panel.paint(g2);
             return Printable.PAGE_EXISTS;
         });
-        
-        if (job.printDialog()) {
+
+        boolean doPrint = job.printDialog();
+        if (doPrint) {
             try {
                 job.print();
-                JOptionPane.showMessageDialog(this, "PDF Processed Successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        "PDF export sent to printer. Use 'Microsoft Print to PDF' to save as PDF.", "Success",
+                        JOptionPane.INFORMATION_MESSAGE);
             } catch (PrinterException ex) {
-                JOptionPane.showMessageDialog(this, "PDF Export Failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "PDF Export Failed: " + ex.getMessage(), "Error",
+                        JOptionPane.ERROR_MESSAGE);
             }
         }
-        
         // Restore animation state
         panel.setVisibleColumns(prevCols);
     }

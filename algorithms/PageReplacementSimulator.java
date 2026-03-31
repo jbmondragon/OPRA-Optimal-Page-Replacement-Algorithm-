@@ -52,25 +52,26 @@ public class PageReplacementSimulator {
 
     // Read from file
     public SimulationInput readFromFile(String filename) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
-            String line;
-            int[] referenceString = null;
-            int frameSize = 0;
-
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith("Reference String:")) {
-                    String[] parts = line.split(":");
-                    String[] numbers = parts[1].trim().split("\\s+");
-                    referenceString = new int[numbers.length];
-                    for (int i = 0; i < numbers.length; i++) {
-                        referenceString[i] = Integer.parseInt(numbers[i]);
-                    }
-                } else if (line.startsWith("Frame Size:")) {
-                    String[] parts = line.split(":");
-                    frameSize = Integer.parseInt(parts[1].trim());
-                }
+        // Always read from the data folder at the project root
+        String dataPath = System.getProperty("user.dir") + File.separator + "data" + File.separator + filename;
+        try (BufferedReader reader = new BufferedReader(new FileReader(dataPath))) {
+            String line1 = reader.readLine();
+            String line2 = reader.readLine();
+            if (line1 == null || line2 == null) {
+                throw new IOException("File must have at least two rows: reference string and frame size");
             }
-
+            // Parse first row as reference string (comma-separated)
+            String[] nums = line1.split(",");
+            int[] referenceString = Arrays.stream(nums)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .mapToInt(Integer::parseInt)
+                    .toArray();
+            // Parse second row, must be a single number (no commas allowed)
+            if (line2.trim().isEmpty() || line2.contains(",")) {
+                throw new IOException("Frame size row must contain only a single number and no commas.");
+            }
+            int frameSize = Integer.parseInt(line2.trim());
             return new SimulationInput(referenceString, frameSize);
         }
     }
@@ -90,12 +91,13 @@ public class PageReplacementSimulator {
     // Run single algorithm
     public SimulationResult runAlgorithm(String algorithmName, int[] referenceString, int frameSize) {
         for (Algorithm algorithm : algorithms) {
-            // This searches the registered list. If the algorithm wasn't added above, this returns null!
+            // This searches the registered list. If the algorithm wasn't added above, this
+            // returns null!
             if (algorithm.getClass().getSimpleName().replace("Algorithm", "").equals(algorithmName)) {
                 return algorithm.simulate(referenceString, frameSize);
             }
         }
-        return null; 
+        return null;
     }
 
     // Save results to file

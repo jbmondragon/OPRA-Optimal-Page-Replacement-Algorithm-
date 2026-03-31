@@ -26,7 +26,7 @@ public class Page extends JPanel {
     private JTextField textField;
     private JTextField frameField;
     private static final int ICON_SIZE = 26;
-    
+
     // Updated to match the instructions/mockup exactly
     private static final String[] ALGORITHMS = {
             "FIFO",
@@ -61,10 +61,12 @@ public class Page extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 mainframe.showCard("MENU");
             }
+
             @Override
             public void mouseEntered(MouseEvent e) {
                 returnLbl.setText("<html><u>Return</u></html>");
             }
+
             @Override
             public void mouseExited(MouseEvent e) {
                 returnLbl.setText("Return");
@@ -137,8 +139,7 @@ public class Page extends JPanel {
         textField.setBackground(new Color(245, 248, 252));
         textField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(185, 185, 185), 1, true),
-                BorderFactory.createEmptyBorder(0, 20, 0, 20)
-        ));
+                BorderFactory.createEmptyBorder(0, 20, 0, 20)));
 
         JLabel frameLabel = new JLabel("Frame Size");
         frameLabel.setFont(new Font("Arial", Font.BOLD, 16));
@@ -293,14 +294,14 @@ public class Page extends JPanel {
 
     private void importFile() {
         JFileChooser fc = new JFileChooser();
-        File dataDir = new File("dataset");
+        File dataDir = new File(System.getProperty("user.dir") + File.separator + "data");
         if (dataDir.exists() && dataDir.isDirectory()) {
             fc.setCurrentDirectory(dataDir);
         }
         fc.setDialogTitle("Import Reference String (.txt/.csv/.xlsx)");
         fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                 "Text/CSV/XLSX files", "txt", "csv", "xlsx"));
-        if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION)
+        if (fc.showOpenDialog(SwingUtilities.getWindowAncestor(this)) != JFileChooser.APPROVE_OPTION)
             return;
         File file = fc.getSelectedFile();
         String name = file.getName().toLowerCase();
@@ -318,9 +319,21 @@ public class Page extends JPanel {
                     error("File is empty.");
                     return;
                 }
-                textField.setText(lines.get(0));
-                if (lines.size() > 1)
-                    frameField.setText(lines.get(1));
+                // First row: reference string (comma or space separated)
+                String refLine = lines.get(0);
+                String refString = refLine.contains(",") ? refLine.replace(",", " ") : refLine;
+                textField.setText(refString.trim());
+                // Second row: frame size (use only the first value, ignore trailing commas)
+                if (lines.size() > 1) {
+                    String frameLine = lines.get(1).trim();
+                    String[] frameParts = frameLine.split(",");
+                    String frameValue = frameParts[0].trim();
+                    if (frameValue.isEmpty() || !frameValue.matches("\\d+")) {
+                        error("Frame size row must contain a valid number in the first column.");
+                        return;
+                    }
+                    frameField.setText(frameValue);
+                }
             } else if (name.endsWith(".xlsx")) {
                 java.util.List<String[]> rows = readXlsx(file);
                 if (rows.isEmpty()) {
@@ -344,7 +357,7 @@ public class Page extends JPanel {
         String refStr = textField.getText().trim();
         String[] refParts = refStr.split("\\s+");
         int[] referenceString = new int[refParts.length];
-        
+
         for (int i = 0; i < refParts.length; i++) {
             try {
                 referenceString[i] = Integer.parseInt(refParts[i]);
@@ -375,9 +388,12 @@ public class Page extends JPanel {
 
         // --- SURGICALLY MAPPED NAMES FOR THE SIMULATOR ---
         String algoName = selectedAlgo;
-        if (selectedAlgo.equals("OPT")) algoName = "Optimal";
-        else if (selectedAlgo.equals("Second chance algorithm")) algoName = "SecondChance";
-        else if (selectedAlgo.equals("Enhanced second chance algorithm")) algoName = "EnhancedSecondChance";
+        if (selectedAlgo.equals("OPT"))
+            algoName = "Optimal";
+        else if (selectedAlgo.equals("Second chance algorithm"))
+            algoName = "SecondChance";
+        else if (selectedAlgo.equals("Enhanced second chance algorithm"))
+            algoName = "EnhancedSecondChance";
 
         if (selectedAlgo.equals("All Algorithms")) {
             Map<String, SimulationResult> results = simulator.runAllAlgorithms(referenceString, frameSize);
@@ -392,7 +408,7 @@ public class Page extends JPanel {
             singleResultMap.put(result.getAlgorithmName(), result);
             mainframe.getResultPanel().startSimulation(singleResultMap);
         }
-        
+
         mainframe.showCard("RESULT");
     }
 
@@ -436,7 +452,8 @@ public class Page extends JPanel {
                                     if (idx < shared.size()) {
                                         v = shared.get(idx);
                                     }
-                                } catch (NumberFormatException ignored) { }
+                                } catch (NumberFormatException ignored) {
+                                }
                             }
                         }
                         rowVals.add(v);
