@@ -184,18 +184,16 @@ public class Result extends JPanel {
         panel.setVisibleColumns(prevCols);
 
         JFileChooser saver = new JFileChooser();
-        saver.setDialogTitle("Save " + algoName + " Result as Image");
-        String timestamp = new java.text.SimpleDateFormat("MMddyy_HHmmss").format(new java.util.Date());
-        saver.setSelectedFile(new File(timestamp + "_PG.png"));
-        int userSelection = saver.showSaveDialog(this);
-        if (userSelection == JFileChooser.APPROVE_OPTION) {
-            File file = saver.getSelectedFile();
-            if (!file.getName().toLowerCase().endsWith(".png")) {
-                file = new File(file.getAbsolutePath() + ".png");
-            }
+        saver.setDialogTitle("Select Folder to Save PNG");
+        saver.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        saver.setAcceptAllFileFilterUsed(false);
+        if (saver.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            String filename = generateName() + ".png";
+            File file = new File(saver.getSelectedFile(), filename);
+
             try {
                 ImageIO.write(img, "png", file);
-                JOptionPane.showMessageDialog(this, "Image saved to " + file.getAbsolutePath(), "Success",
+                JOptionPane.showMessageDialog(this, "Image saved as: " + filename, "Success",
                         JOptionPane.INFORMATION_MESSAGE);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error saving image: " + ex.getMessage(), "Error",
@@ -209,35 +207,50 @@ public class Result extends JPanel {
         int prevCols = panel.getVisibleColumns();
         panel.setVisibleColumns(panel.getTotalColumns());
 
-        PrinterJob job = PrinterJob.getPrinterJob();
-        job.setJobName("Export " + algoName + " Result");
-        job.setPrintable((g, pf, page) -> {
-            if (page > 0)
-                return Printable.NO_SUCH_PAGE;
-            Graphics2D g2 = (Graphics2D) g;
-            g2.translate(pf.getImageableX(), pf.getImageableY());
-            // Scale the grid to fit the width of the PDF page
-            double scale = pf.getImageableWidth() / panel.getWidth();
-            if (scale > 1.0)
-                scale = 1.0; // Don't scale up if it's already small enough
-            g2.scale(scale, scale);
-            panel.paint(g2);
-            return Printable.PAGE_EXISTS;
-        });
+        JFileChooser saver = new JFileChooser();
+        saver.setDialogTitle("Select Folder to Save PDF");
+        saver.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
-        boolean doPrint = job.printDialog();
-        if (doPrint) {
+        if (saver.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            String filename = generateName() + ".pdf";
+            File file = new File(saver.getSelectedFile(), filename);
+
+            PrinterJob job = PrinterJob.getPrinterJob();
+            PrintRequestAttributeSet aset = new HashPrintRequestAttributeSet();
+
+            aset.add(new Destination(file.toURI()));
+
+            job.setPrintable((g, pf, page) -> {
+                if (page > 0)
+                    return Printable.NO_SUCH_PAGE;
+                Graphics2D g2 = (Graphics2D) g;
+                g2.translate(pf.getImageableX(), pf.getImageableY());
+                // Scale the grid to fit the width of the PDF page
+                double scale = pf.getImageableWidth() / panel.getWidth();
+                if (scale > 1.0)
+                    scale = 1.0; // Don't scale up if it's already small enough
+                g2.scale(scale, scale);
+                panel.paint(g2);
+                return Printable.PAGE_EXISTS;
+            });
+        
+
             try {
-                job.print();
+                job.print(aset);
                 JOptionPane.showMessageDialog(this,
-                        "PDF export sent to printer. Use 'Microsoft Print to PDF' to save as PDF.", "Success",
-                        JOptionPane.INFORMATION_MESSAGE);
+                        "PDF saved to:" + file.getAbsolutePath());
             } catch (PrinterException ex) {
                 JOptionPane.showMessageDialog(this, "PDF Export Failed: " + ex.getMessage(), "Error",
                         JOptionPane.ERROR_MESSAGE);
+            
             }
         }
         // Restore animation state
         panel.setVisibleColumns(prevCols);
+    }
+
+    private String generateName(){
+        String timestamp = new SimpleDateFormat("MMddyy_HHmmss").format(new Date());
+        return timestamp + "_PG";
     }
 }
