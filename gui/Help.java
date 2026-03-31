@@ -114,10 +114,12 @@ public class Help extends JPanel {
 
                         6. SIMULATION CONTROLS
                            • Speed Adjustment: Use the timer slider to speed up or slow down the simulation.
-                           • Visual Cues: The current page in the string and the frame being manipulated will be highlighted.   
+                           • Visual Cues: The current page in the string and the frame being manipulated will be highlighted. 
+
                         7. Saving RESULTS
                            • You can save all algorithm outputs as a PDF or Image file.
                            • Filename format: (mmddyy_hhmmss_PG).
+                           
                         That's it! Experiment with different algorithms to see how they affect performance!
                         """);
 
@@ -215,7 +217,7 @@ public class Help extends JPanel {
                 { "String Length", "Must be between 10 and 40 characters." },
                 { "Page Values", "Individual page numbers must be between 0 and 20." },
                 { "Frame Size", "Number of memory slots must be between 3 and 10." },
-                { "Simultaneous Run", "You can choose to run all 7 algorithms at once for comparison." }
+                { "Run All", "You can choose to run all 7 algorithms at once for comparison." }
         };
 
         for (String[] field : fields) {
@@ -233,28 +235,33 @@ public class Help extends JPanel {
         fileFormatPanel.setBackground(SECTION_BG);
         fileFormatPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
 
+        fileFormatPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         JTextArea fileFormat = new JTextArea();
         fileFormat.setEditable(false);
         fileFormat.setFont(new Font("Monospaced", Font.PLAIN, 12));
         fileFormat.setBackground(SECTION_BG);
-        // fileFormat.setText("""
-        //         TXT/CSV Format (space or comma separated):
-        //         ----------------------------------------
-        //         P1 5 0 1
-        //         P2 8 2 2
-        //         P3 3 4 3
+        fileFormat.setText("""
+                TXT/CSV Format (space or comma separated):
+                ----------------------------------------
+                The file should contain a single line of integers for its reference string.
+                It can be separated by using spaces or commas.
+                The second line should contain the number of frames.
 
-        //         Or with headers:
-        //         Process,Burst,Arrival,Priority
-        //         P1,5,0,1
-        //         P2,8,2,2
-        //         P3,3,4,3
+                Ex.
+                Reference String
+                Frames
 
-        //         XLSX Format:
-        //         - First row can be headers or data
-        //         - Columns: Process ID, Burst Time, Arrival Time, Priority
-        //         """);
+                Ex of imported file:
+                0 1 4 2 5 7 3 6 4
+                4
 
+                Or
+                3, 4, 6, 8, 2, 5, 20, 5
+                10
+
+                """);
+        
         fileFormatPanel.add(fileFormat, BorderLayout.CENTER);
         contentPanel.add(fileFormatPanel);
 
@@ -272,17 +279,16 @@ public class Help extends JPanel {
         example.setEditable(false);
         example.setFont(new Font("Monospaced", Font.PLAIN, 12));
         example.setBackground(SECTION_BG);
-        // example.setText("""
-        //         Process    Burst    Arrival    Priority
-        //         ----------------------------------------
-        //         P1         10       0          3
-        //         P2         5        2          1
-        //         P3         8        4          2
-        //         P4         3        6          4
-        //         """);
+        example.setText("""
+                            Reference String        
+                    0 1 5 4 6 8 6 3 2 6 3 7 3 20 3 5
+                               Frame Size
+                                    4
+                """);
 
-        // examplePanel.add(example, BorderLayout.CENTER);
-        // contentPanel.add(examplePanel);
+        examplePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        examplePanel.add(example, BorderLayout.CENTER);
+        contentPanel.add(examplePanel);
 
         JScrollPane scrollPane = new JScrollPane(contentPanel);
         scrollPane.setBorder(null);
@@ -307,11 +313,10 @@ public class Help extends JPanel {
         contentPanel.add(Box.createVerticalStrut(15));
 
         String[] beginnerTips = {
-                // "Start with FCFS - it's the simplest to understand",
-                // "Try the Random button to generate test data quickly",
-                // "Watch how the Gantt chart animates to understand process execution",
-                // "Compare waiting times between different algorithms",
-                // "Use small burst times (1-5) initially for clearer visualization"
+                "A Page Fault (Miss) occurs when the requested page is not in memory.",
+                "Start with a small frame size to easily track how pages are replaced.",
+                "Use the Random button if you want to see the algorithm handle data.",
+                "Slow down the speed of the timer to see which frame is being swapped out.",
         };
 
         for (String tip : beginnerTips) {
@@ -326,12 +331,10 @@ public class Help extends JPanel {
         contentPanel.add(Box.createVerticalStrut(15));
 
         String[] advancedTips = {
-                // "Experiment with Round Robin quantum sizes - see how 2 vs 4 affects performance",
-                // "Try priority inversion scenarios with Priority algorithms",
-                // "Test SJF Preemptive with varying arrival times to see preemption in action",
-                // "Compare SJF vs Priority when priorities match burst times",
-                // "Create processes that arrive at the same time to see pure scheduling behavior",
-                // "Use the replay button to review execution multiple times"
+                "The Optimal (OPT) algorithm is the best possible algorithm to try.",
+                "LRU is generally the best 'real world' choice because it uses past behavior to predict the future.",
+                "LFU and MFU are tricky as they rely on how often a page is used, not how recently.",
+                "Watch out for Belady's Anomaly in FIFO."
         };
 
         for (String tip : advancedTips) {
@@ -346,16 +349,17 @@ public class Help extends JPanel {
         contentPanel.add(Box.createVerticalStrut(15));
 
         String[][] patterns = {
-                // { "Convoy Effect", "Long job first followed by short jobs - see FCFS vs SJF" },
-                // { "Starvation", "Continuous stream of high priority jobs - watch low priority jobs never run" },
-                // { "Context Switching", "Many short processes with small quantum - observe overhead" },
-                // { "Priority Inversion", "Medium priority job blocking high priority job indirectly" }
+                { "Belady's Anomaly", "Try FIFO with string '1 2 3 4 1 2 5 1 2 3 4 5' using 3 vs 4 frames." },
+                { "Locality of Reference", "Input '1 2 3 1 2 3' to see how LRU handles repetitive loops." },
+                { "Stack Algorithms", "Notice how LRU and OPT never perform worse when you give them more frames" },
         };
 
         for (String[] pattern : patterns) {
             JPanel patternCard = new JPanel(new BorderLayout());
             patternCard.setBackground(SECTION_BG);
             patternCard.setBorder(new EmptyBorder(10, 15, 10, 15));
+
+            patternCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
             JLabel title = new JLabel(pattern[0]);
             title.setFont(new Font("Arial", Font.BOLD, 14));
