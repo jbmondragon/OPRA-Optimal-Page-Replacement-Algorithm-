@@ -1,3 +1,4 @@
+
 package gui;
 
 import algorithms.SimulationResult;
@@ -7,8 +8,12 @@ import java.awt.print.Printable;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import javax.imageio.ImageIO;
+import javax.print.attribute.HashPrintRequestAttributeSet;
+import javax.print.attribute.PrintRequestAttributeSet;
+import javax.print.attribute.standard.Destination;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
@@ -233,7 +238,6 @@ public class Result extends JPanel {
                 panel.paint(g2);
                 return Printable.PAGE_EXISTS;
             });
-        
 
             try {
                 job.print(aset);
@@ -242,14 +246,14 @@ public class Result extends JPanel {
             } catch (PrinterException ex) {
                 JOptionPane.showMessageDialog(this, "PDF Export Failed: " + ex.getMessage(), "Error",
                         JOptionPane.ERROR_MESSAGE);
-            
+
             }
         }
         // Restore animation state
         panel.setVisibleColumns(prevCols);
     }
 
-    private String generateName(){
+    private String generateName() {
         String timestamp = new SimpleDateFormat("MMddyy_HHmmss").format(new Date());
         return timestamp + "_PG";
     }

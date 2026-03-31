@@ -106,14 +106,22 @@ public class PageReplacementResultPanel extends JPanel {
         // 4. Footer Info
         if (visibleColumns > 0) {
             int footerY = 50 + (frameCount * rowHeight) + 75;
-            // Draw Algorithm Name and Number of Frames
+            // Draw Algorithm Name, Reference String, and Number of Frames
             g2.setFont(new Font("Arial", Font.BOLD, 13));
             g2.setColor(Color.DARK_GRAY);
             String algoNameText = "Algorithm Name: " + result.getAlgorithmName();
+            // Build reference string from steps
+            StringBuilder refSb = new StringBuilder();
+            for (SimulationResult.Step step : result.getSteps()) {
+                refSb.append(step.getPageNumber()).append(" ");
+            }
+            String refStringText = "Reference String: " + refSb.toString().trim();
             String frameCountText = "Number of Frames: " + frameCount;
             g2.drawString(algoNameText, 20, footerY);
             int algoTextWidth = g2.getFontMetrics().stringWidth(algoNameText);
-            g2.drawString(frameCountText, 20 + algoTextWidth + 40, footerY);
+            g2.drawString(refStringText, 20 + algoTextWidth + 40, footerY);
+            int refTextWidth = g2.getFontMetrics().stringWidth(refStringText);
+            g2.drawString(frameCountText, 20 + algoTextWidth + 40 + refTextWidth + 40, footerY);
             // Only show Total Page Faults when the simulation for this algorithm finishes
             if (visibleColumns >= getTotalColumns()) {
                 int frameTextWidth = g2.getFontMetrics().stringWidth(frameCountText);
@@ -121,7 +129,7 @@ public class PageReplacementResultPanel extends JPanel {
                 g2.setFont(new Font("Arial", Font.BOLD, 16));
                 // 40px buffer after the frame count text to prevent overlapping
                 g2.drawString("Total Page Fault = " + result.getPageFaults(),
-                        20 + algoTextWidth + 40 + frameTextWidth + 40, footerY);
+                        20 + algoTextWidth + 40 + refTextWidth + 40 + frameTextWidth + 40, footerY);
             }
         }
     }
