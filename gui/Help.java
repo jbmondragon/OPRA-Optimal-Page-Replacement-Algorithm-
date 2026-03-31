@@ -101,6 +101,7 @@ public class Help extends JPanel {
                            • Reference String Length: Minimum 10, Maximum 40.
                            • Reference String Values: Must be between 0 and 20.
                            • Frame Size: Between 3 and 10 frames.
+            
                         3. USE THE ACTION BUTTONS (right side)
                            • Random: Generate random reference string and page replacement algorithm for testing
                            • Import: Load reference string from a file (.txt, .csv)
