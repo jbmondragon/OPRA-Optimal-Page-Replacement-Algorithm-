@@ -14,6 +14,7 @@ public class PageReplacementResultPanel extends JPanel {
     private static final Color FRAME_FILL = new Color(197, 219, 238);
     private static final Color TEXT_GREEN = new Color(46, 139, 87);
     private static final Color FAULT_RED = new Color(180, 50, 50);
+    private static final Color FRAME_HIGHLIGHT = new Color(255, 230, 140);
 
     public PageReplacementResultPanel(SimulationResult result) {
         this.result = result;
@@ -21,7 +22,7 @@ public class PageReplacementResultPanel extends JPanel {
         int steps = result.getSteps().size();
         int frames = result.getSteps().get(0).getFrameState().length;
         // Dynamic width based on reference string length
-        setPreferredSize(new Dimension(85 * steps + 40, 220 + 45 * frames));
+        setPreferredSize(new Dimension(85 * steps + 40, 300 + 45 * frames));
     }
 
     public void setVisibleColumns(int count) {
@@ -52,6 +53,11 @@ public class PageReplacementResultPanel extends JPanel {
             SimulationResult.Step step = steps.get(i);
             int x = 20 + (i * colWidth);
 
+            if (i==visibleColumns-1 && visibleColumns<result.getSteps().size()){
+                g2.setColor(new Color(255, 255, 0, 80));
+                g2.fillRoundRect(x+5, 5, colWidth-10, 35, 10, 10);
+            }
+
             // 1. Reference Number
             g2.setColor(TEXT_GREEN);
             g2.setFont(new Font("Arial", Font.BOLD, 18));
@@ -60,9 +66,26 @@ public class PageReplacementResultPanel extends JPanel {
 
             // 2. Frames
             int[] frames = step.getFrameState();
+            int[] prevFrames = null;
+            if (i>0){
+                prevFrames = steps.get(i - 1).getFrameState();
+            }
+
             for (int f = 0; f < frameCount; f++) {
                 int y = 50 + (f * rowHeight);
+
+                boolean changed;
+                if (prevFrames == null){
+                    changed = (frames[f]!= -1);
+                } else {
+                    changed = (frames[f]!= prevFrames[f]);
+                }
+
+                if (changed)
+                    g2.setColor(FRAME_HIGHLIGHT);
+                else
                 g2.setColor(FRAME_FILL);
+            
                 g2.fillRect(x + 5, y, colWidth - 10, rowHeight - 5);
                 g2.setColor(Color.GRAY);
                 g2.drawRect(x + 5, y, colWidth - 10, rowHeight - 5);
