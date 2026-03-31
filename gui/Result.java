@@ -2,149 +2,232 @@ package gui;
 
 import algorithms.SimulationResult;
 import java.awt.*;
-import java.util.Map;
+import java.awt.image.BufferedImage;
+import java.awt.print.Printable;
+import java.awt.print.PrinterException;
+import java.awt.print.PrinterJob;
+import java.io.File;
+import java.util.*;
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
 public class Result extends JPanel {
-    private JTabbedPane tabbedPane;
-    private JPanel controlsPanel;
+    private final Mainframe mainframe;
+    private JPanel resultContainer;
     private JSlider speedSlider;
-    private JButton exportPngBtn, exportPdfBtn, backBtn;
-    private JLabel frameCountLabel;
-    private Mainframe mainframe;
-    private int lastFrameCount = -1;
+    private javax.swing.Timer animTimer;
+    
+    private Queue<SimulationResult> resultsQueue = new LinkedList<>();
+    private PageReplacementResultPanel currentPanel;
+    private JPanel currentButtonPanel; // Tracks the active algorithm's button panel
+    private int currentStep = 0;
+    private int currentMaxSteps = 0; 
 
     public Result(Mainframe frame) {
         this.mainframe = frame;
         setLayout(new BorderLayout());
-        setBackground(Mainframe.BG_DARK);
+        setBackground(new Color(173, 196, 220));
+
         add(createHeader(), BorderLayout.NORTH);
-        add(createMainContent(), BorderLayout.CENTER);
+        
+        resultContainer = new JPanel();
+        resultContainer.setLayout(new BoxLayout(resultContainer, BoxLayout.Y_AXIS));
+        resultContainer.setOpaque(false);
+        
+        JScrollPane scroll = new JScrollPane(resultContainer);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.setBorder(null);
+        // Speed up the scroll wheel
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        add(scroll, BorderLayout.CENTER);
+
+        // Default timer fires every 500ms (can be adjusted by the slider)
+        animTimer = new javax.swing.Timer(500, e -> updateAnimation());
     }
 
     private JPanel createHeader() {
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(Mainframe.BG_LIGHT_GRAY);
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(new Color(81, 97, 113));
+        header.setBorder(new EmptyBorder(10, 20, 10, 20));
 
-        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        leftPanel.setOpaque(false);
-        backBtn = new JButton("← Back");
-        backBtn.setFont(new Font("Arial", Font.BOLD, 15));
+        // Center: Speed Control Slider
+        JPanel speedPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        speedPanel.setOpaque(false);
+        JLabel speedLabel = new JLabel("Timer Speed: ");
+        speedLabel.setForeground(Color.WHITE);
+        speedLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        
+        speedSlider = new JSlider(JSlider.HORIZONTAL, 1, 10, 2);
+        speedSlider.setOpaque(false);
+        speedSlider.setForeground(Color.WHITE);
+        speedSlider.setMajorTickSpacing(1);
+        speedSlider.setPaintTicks(true);
+        speedSlider.addChangeListener(e -> {
+            int speed = speedSlider.getValue();
+            animTimer.setDelay(1000 / speed);
+        });
+        
+        speedPanel.add(speedLabel);
+        speedPanel.add(speedSlider);
+        
+        // Right side: Back Button
+        JButton backBtn = new JButton("← Return");
         backBtn.setFocusPainted(false);
-        backBtn.setBackground(new Color(220, 230, 245));
-        backBtn.setForeground(new Color(40, 80, 120));
-        backBtn.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
-        backBtn.addActionListener(e -> mainframe.showCard("SCHEDULE"));
-        leftPanel.add(backBtn);
+        backBtn.setBackground(Color.WHITE);
+        backBtn.setForeground(new Color(81, 97, 113));
+        backBtn.setFont(new Font("Arial", Font.BOLD, 12));
+        backBtn.addActionListener(e -> {
+            animTimer.stop();
+            mainframe.showCard("SCHEDULE");
+        });
 
-        JLabel mainPageLabel = new JLabel("  Simulation Output");
-        mainPageLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        leftPanel.add(mainPageLabel);
-
-        frameCountLabel = new JLabel("");
-        frameCountLabel.setFont(new Font("Arial", Font.PLAIN, 15));
-        frameCountLabel.setForeground(new Color(40, 80, 120));
-        frameCountLabel.setBorder(new EmptyBorder(0, 30, 0, 0));
-        leftPanel.add(frameCountLabel);
-
-        headerPanel.add(leftPanel, BorderLayout.WEST);
-        return headerPanel;
+        header.add(speedPanel, BorderLayout.WEST);
+        header.add(backBtn, BorderLayout.EAST);
+        
+        return header;
     }
 
-    private JPanel createMainContent() {
+    public void startSimulation(Map<String, SimulationResult> results) {
+        resultsQueue.clear();
+        resultsQueue.addAll(results.values());
+        resultContainer.removeAll();
+        playNextAlgorithm();
+    }
+
+    private void playNextAlgorithm() {
+        if (resultsQueue.isEmpty()) return;
+
+        SimulationResult next = resultsQueue.poll();
+        currentStep = 0;
+        currentMaxSteps = next.getSteps().size(); 
+        currentPanel = new PageReplacementResultPanel(next);
+        
+        // Lock these variables locally so the button lambdas target the correct algorithm
+        PageReplacementResultPanel panelRef = currentPanel;
+        String algoNameRef = next.getAlgorithmName();
+        
+        // Wrap panel in a white box like the mockup
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(Color.WHITE);
-        wrapper.setBorder(new EmptyBorder(10, 10, 10, 10));
+        wrapper.setBorder(new EmptyBorder(15, 15, 15, 15));
+        
+        // --- Individual PDF & Image Buttons attached below the grid ---
+        currentButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        currentButtonPanel.setOpaque(false);
+        currentButtonPanel.setVisible(false); // Hide the buttons initially
 
-        // Controls panel (minimalist, flat)
-        controlsPanel = new JPanel();
-        controlsPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 16, 4));
-        controlsPanel.setBackground(Color.WHITE);
+        JButton downloadPngBtn = new JButton("Save as Image");
+        downloadPngBtn.setBackground(new Color(46, 139, 87));
+        downloadPngBtn.setForeground(Color.WHITE);
+        downloadPngBtn.setFocusPainted(false);
+        downloadPngBtn.setFont(new Font("Arial", Font.BOLD, 14));
+        downloadPngBtn.addActionListener(e -> savePanelAsImage(panelRef, algoNameRef));
 
-        JLabel speedLabel = new JLabel("Speed:");
-        speedLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        speedSlider = new JSlider(100, 2000, 500);
-        speedSlider.setMajorTickSpacing(500);
-        speedSlider.setMinorTickSpacing(100);
-        speedSlider.setPaintTicks(true);
-        speedSlider.setPaintLabels(false);
-        speedSlider.setPreferredSize(new Dimension(120, 32));
-        speedSlider.setBackground(Color.WHITE);
+        JButton downloadPdfBtn = new JButton("Save as PDF");
+        downloadPdfBtn.setBackground(new Color(180, 50, 50));
+        downloadPdfBtn.setForeground(Color.WHITE);
+        downloadPdfBtn.setFocusPainted(false);
+        downloadPdfBtn.setFont(new Font("Arial", Font.BOLD, 14));
+        downloadPdfBtn.addActionListener(e -> printToPDF(panelRef, algoNameRef));
 
-        exportPngBtn = new JButton("Export PNG");
-        exportPdfBtn = new JButton("Export PDF");
-        exportPngBtn.setFocusPainted(false);
-        exportPdfBtn.setFocusPainted(false);
-        exportPngBtn.setFont(new Font("Arial", Font.BOLD, 13));
-        exportPdfBtn.setFont(new Font("Arial", Font.BOLD, 13));
-        exportPngBtn.setBackground(new Color(220, 230, 245));
-        exportPdfBtn.setBackground(new Color(220, 230, 245));
-        exportPngBtn.setForeground(new Color(40, 80, 120));
-        exportPdfBtn.setForeground(new Color(40, 80, 120));
+        currentButtonPanel.add(downloadPngBtn);
+        currentButtonPanel.add(downloadPdfBtn);
+        
+        wrapper.add(currentButtonPanel, BorderLayout.SOUTH);
+        
+        JScrollPane innerScroll = new JScrollPane(currentPanel);
+        innerScroll.setBorder(null);
+        wrapper.add(innerScroll, BorderLayout.CENTER);
 
-        controlsPanel.add(speedLabel);
-        controlsPanel.add(speedSlider);
-        controlsPanel.add(exportPngBtn);
-        controlsPanel.add(exportPdfBtn);
-
-        tabbedPane = new JTabbedPane(JTabbedPane.TOP, JTabbedPane.SCROLL_TAB_LAYOUT);
-        tabbedPane.setFont(new Font("Arial", Font.PLAIN, 15));
-        tabbedPane.setBackground(Color.WHITE);
-
-        wrapper.add(controlsPanel, BorderLayout.NORTH);
-        wrapper.add(tabbedPane, BorderLayout.CENTER);
-        return wrapper;
+        resultContainer.add(wrapper);
+        resultContainer.add(Box.createVerticalStrut(20));
+        
+        revalidate();
+        
+        // Set initial timer speed based on slider before starting
+        animTimer.setDelay(1000 / speedSlider.getValue());
+        animTimer.start();
     }
 
-    /**
-     * Display a single algorithm result (for single algorithm mode)
-     */
-    public void displayResult(String algorithmName, SimulationResult result) {
-        tabbedPane.removeAll();
-        PageReplacementResultPanel panel = new PageReplacementResultPanel(result);
-        JScrollPane scrollPane = new JScrollPane(panel, JScrollPane.VERTICAL_SCROLLBAR_NEVER,
-                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.getHorizontalScrollBar().setUnitIncrement(20);
-        scrollPane.setBorder(null);
-        tabbedPane.addTab(algorithmName, scrollPane);
-        // Connect speed slider to panel
-        speedSlider.addChangeListener(e -> panel.setAnimationSpeed(speedSlider.getValue()));
-        // Export buttons
-        exportPngBtn.addActionListener(ev -> panel.exportAsPng());
-        exportPdfBtn.addActionListener(ev -> panel.exportAsPdf());
-        // Show number of page frames
-        int frameCount = result.getSteps().get(0).getFrameState().length;
-        frameCountLabel.setText("Frames: " + frameCount);
-        lastFrameCount = frameCount;
-    }
-
-    /**
-     * Display results for multiple algorithms (for "All Algorithms" mode)
-     */
-    public void displayMultipleResults(Map<String, SimulationResult> results) {
-        tabbedPane.removeAll();
-        int frameCount = -1;
-        for (Map.Entry<String, SimulationResult> entry : results.entrySet()) {
-            PageReplacementResultPanel panel = new PageReplacementResultPanel(entry.getValue());
-            JScrollPane scrollPane = new JScrollPane(panel, JScrollPane.VERTICAL_SCROLLBAR_NEVER,
-                    JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-            scrollPane.getHorizontalScrollBar().setUnitIncrement(20);
-            scrollPane.setBorder(null);
-            tabbedPane.addTab(entry.getKey(), scrollPane);
-            // Connect speed slider to panel
-            speedSlider.addChangeListener(e -> panel.setAnimationSpeed(speedSlider.getValue()));
-            // Export buttons
-            exportPngBtn.addActionListener(ev -> panel.exportAsPng());
-            exportPdfBtn.addActionListener(ev -> panel.exportAsPdf());
-            // Use the first result's frame count for display
-            if (frameCount == -1) {
-                frameCount = entry.getValue().getSteps().get(0).getFrameState().length;
+    private void updateAnimation() {
+        if (currentPanel != null && currentStep < currentMaxSteps) {
+            currentStep++;
+            currentPanel.setVisibleColumns(currentStep);
+        } else {
+            // Animation finished for this algorithm: Reveal the buttons
+            if (currentButtonPanel != null) {
+                currentButtonPanel.setVisible(true);
+            }
+            
+            animTimer.stop();
+            if (!resultsQueue.isEmpty()) {
+                playNextAlgorithm();
             }
         }
-        if (frameCount != -1) {
-            frameCountLabel.setText("Frames: " + frameCount);
-            lastFrameCount = frameCount;
+    }
+
+    private void savePanelAsImage(PageReplacementResultPanel panel, String algoName) {
+        // Temporarily reveal all columns so the screenshot captures the final state
+        int prevCols = panel.getVisibleColumns();
+        panel.setVisibleColumns(panel.getTotalColumns());
+        
+        BufferedImage img = new BufferedImage(panel.getWidth(), panel.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2 = img.createGraphics();
+        panel.paint(g2);
+        g2.dispose();
+        
+        // Restore animation state
+        panel.setVisibleColumns(prevCols);
+
+        JFileChooser saver = new JFileChooser();
+        saver.setDialogTitle("Save " + algoName + " Result as Image");
+        if (saver.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            try {
+                String filePath = saver.getSelectedFile().getAbsolutePath();
+                if (!filePath.toLowerCase().endsWith(".png")) {
+                    filePath += ".png";
+                }
+                ImageIO.write(img, "png", new File(filePath));
+                JOptionPane.showMessageDialog(this, "Image saved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) { 
+                JOptionPane.showMessageDialog(this, "Error saving image: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
+    }
+
+    private void printToPDF(PageReplacementResultPanel panel, String algoName) {
+        // Temporarily reveal all columns
+        int prevCols = panel.getVisibleColumns();
+        panel.setVisibleColumns(panel.getTotalColumns());
+        
+        PrinterJob job = PrinterJob.getPrinterJob();
+        job.setJobName("Export " + algoName + " Result");
+        job.setPrintable((g, pf, page) -> {
+            if (page > 0) return Printable.NO_SUCH_PAGE;
+            Graphics2D g2 = (Graphics2D) g;
+            g2.translate(pf.getImageableX(), pf.getImageableY());
+            
+            // Scale the grid to fit the width of the PDF page
+            double scale = pf.getImageableWidth() / panel.getWidth();
+            if (scale > 1.0) scale = 1.0; // Don't scale up if it's already small enough
+            
+            g2.scale(scale, scale);
+            panel.paint(g2);
+            return Printable.PAGE_EXISTS;
+        });
+        
+        if (job.printDialog()) {
+            try {
+                job.print();
+                JOptionPane.showMessageDialog(this, "PDF Processed Successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (PrinterException ex) {
+                JOptionPane.showMessageDialog(this, "PDF Export Failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        
+        // Restore animation state
+        panel.setVisibleColumns(prevCols);
     }
 }

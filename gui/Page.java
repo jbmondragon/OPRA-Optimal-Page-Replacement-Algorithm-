@@ -7,7 +7,8 @@ import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
-import java.util.Random;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import javax.imageio.ImageIO;
@@ -25,19 +26,20 @@ public class Page extends JPanel {
     private JTextField textField;
     private JTextField frameField;
     private static final int ICON_SIZE = 26;
+    
+    // Updated to match the instructions/mockup exactly
     private static final String[] ALGORITHMS = {
             "FIFO",
             "LRU",
-            "Optimal",
-            "Second Chance",
-            "Enhanced Second Chance",
+            "OPT",
+            "Second chance algorithm",
+            "Enhanced second chance algorithm",
             "LFU",
             "MFU",
             "All Algorithms"
     };
     private final PageReplacementSimulator simulator = new PageReplacementSimulator();
 
-    /** Construct schedule panel bound to parent frame. */
     public Page(Mainframe frame) {
         this.mainframe = frame;
         setLayout(new BorderLayout());
@@ -46,9 +48,6 @@ public class Page extends JPanel {
         ImageIcon randomIcon = loadIcon("img/random.png", ICON_SIZE);
         ImageIcon importIcon = loadIcon("img/import.png", ICON_SIZE);
 
-        // =====================================================================
-
-        // =====================================================================
         JPanel topHeader = new JPanel(new BorderLayout());
         topHeader.setBackground(Mainframe.BG_DARK);
         topHeader.setBorder(new EmptyBorder(8, 14, 6, 14));
@@ -62,12 +61,10 @@ public class Page extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 mainframe.showCard("MENU");
             }
-
             @Override
             public void mouseEntered(MouseEvent e) {
                 returnLbl.setText("<html><u>Return</u></html>");
             }
-
             @Override
             public void mouseExited(MouseEvent e) {
                 returnLbl.setText("Return");
@@ -89,9 +86,6 @@ public class Page extends JPanel {
         topHeader.add(spacer, BorderLayout.EAST);
         add(topHeader, BorderLayout.NORTH);
 
-        // =====================================================================
-
-        // =====================================================================
         JPanel body = new JPanel(new BorderLayout(12, 0));
         body.setBackground(Mainframe.BG_DARK);
         body.setBorder(new EmptyBorder(4, 8, 8, 8));
@@ -143,7 +137,7 @@ public class Page extends JPanel {
         textField.setBackground(new Color(245, 248, 252));
         textField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(185, 185, 185), 1, true),
-                BorderFactory.createEmptyBorder(0, 20, 0, 20) // Internal text padding
+                BorderFactory.createEmptyBorder(0, 20, 0, 20)
         ));
 
         JLabel frameLabel = new JLabel("Frame Size");
@@ -168,20 +162,15 @@ public class Page extends JPanel {
         inputPanel.add(frameLabel);
         inputPanel.add(Box.createVerticalStrut(15));
         inputPanel.add(frameField);
-
         inputPanel.add(Box.createVerticalGlue());
 
         leftCard.add(inputPanel, BorderLayout.CENTER);
 
-        // =================================================================
-        // RIGHT — controls panel
-        // =================================================================
         JPanel rightPanel = new JPanel();
         rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
         rightPanel.setBackground(Mainframe.BG_DARK);
         rightPanel.setPreferredSize(new Dimension(190, 0));
 
-        // Full-width black logo block at top
         JPanel logoBlock = new JPanel();
         logoBlock.setBackground(new Color(81, 97, 113));
         logoBlock.setMinimumSize(new Dimension(190, 68));
@@ -190,13 +179,11 @@ public class Page extends JPanel {
         rightPanel.add(logoBlock);
         rightPanel.add(Box.createVerticalStrut(12));
 
-        // ---- Action buttons with image icons on WHITE backgrounds ----
-        rightPanel.add(makeActionRow(randomIcon, "Random", e -> randomFill(textField)));
+        rightPanel.add(makeActionRow(randomIcon, "Random", e -> randomFill()));
         rightPanel.add(Box.createVerticalStrut(5));
         rightPanel.add(makeActionRow(importIcon, "Import", e -> importFile()));
         rightPanel.add(Box.createVerticalStrut(14));
 
-        // Algorithm selector dark box
         JPanel algoBox = new JPanel();
         algoBox.setLayout(new BoxLayout(algoBox, BoxLayout.Y_AXIS));
         algoBox.setBackground(new Color(245, 248, 252));
@@ -222,7 +209,6 @@ public class Page extends JPanel {
         rightPanel.add(algoBox);
         rightPanel.add(Box.createVerticalGlue());
 
-        // Submit button
         JButton submitBtn = new JButton("Submit");
         submitBtn.setBackground(new Color(81, 97, 113));
         submitBtn.setForeground(Color.WHITE);
@@ -237,16 +223,11 @@ public class Page extends JPanel {
         submitBtn.addActionListener(e -> runSimulation());
         rightPanel.add(submitBtn);
 
-        // =================================================================
         body.add(leftCard, BorderLayout.CENTER);
         body.add(rightPanel, BorderLayout.EAST);
         add(body, BorderLayout.CENTER);
     }
 
-    // =========================================================================
-    // Action row builder — WHITE square button with image icon + label
-    // =========================================================================
-    /** Create a single row containing an icon button and a label. */
     private JPanel makeActionRow(ImageIcon icon, String label, ActionListener action) {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         row.setBackground(Mainframe.BG_DARK);
@@ -278,11 +259,6 @@ public class Page extends JPanel {
         return row;
     }
 
-    // =========================================================================
-    // Icon loader — scales image to targetSize x targetSize
-    // Tries classpath resource first, then filesystem fallback
-    // =========================================================================
-    /** Load and scale an image resource, returning an ImageIcon or null. */
     private ImageIcon loadIcon(String path, int targetSize) {
         try {
             URL url = getClass().getClassLoader().getResource(path);
@@ -290,7 +266,6 @@ public class Page extends JPanel {
             if (url != null) {
                 img = ImageIO.read(url);
             } else {
-
                 File f = new File(path);
                 if (!f.exists())
                     return null;
@@ -301,25 +276,21 @@ public class Page extends JPanel {
             Image scaled = img.getScaledInstance(targetSize, targetSize, Image.SCALE_SMOOTH);
             return new ImageIcon(scaled);
         } catch (Exception ex) {
-            System.err.println("Could not load icon: " + path + " — " + ex.getMessage());
+            System.err.println("Could not load icon: " + path + " - " + ex.getMessage());
             return null;
         }
     }
 
-    /** Populate table with random process data for testing. */
-    private void randomFill(JTextField textField) {
-        Random rand = new Random();
+    private void randomFill() {
+        PageReplacementSimulator.SimulationInput randInput = simulator.generateRandomInput();
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 40; i++) {
-            sb.append(rand.nextInt(10)).append(" ");
+        for (int num : randInput.getReferenceString()) {
+            sb.append(num).append(" ");
         }
         textField.setText(sb.toString().trim());
+        frameField.setText(String.valueOf(randInput.getFrameSize()));
     }
 
-    /**
-     * Import reference string and frame size from a selected file (.txt, .csv,
-     * .xlsx).
-     */
     private void importFile() {
         JFileChooser fc = new JFileChooser();
         File dataDir = new File("dataset");
@@ -347,8 +318,6 @@ public class Page extends JPanel {
                     error("File is empty.");
                     return;
                 }
-                // Assume first non-empty line is reference string, second (if present) is frame
-                // size
                 textField.setText(lines.get(0));
                 if (lines.size() > 1)
                     frameField.setText(lines.get(1));
@@ -358,8 +327,6 @@ public class Page extends JPanel {
                     error("Excel file is empty.");
                     return;
                 }
-                // Assume first row, first cell is reference string, second cell (if present) is
-                // frame size
                 String[] firstRow = rows.get(0);
                 if (firstRow.length > 0)
                     textField.setText(firstRow[0]);
@@ -373,12 +340,11 @@ public class Page extends JPanel {
         }
     }
 
-    /** Validate table data, create jobs, run selected scheduling algorithm. */
     private void runSimulation() {
-        // Parse reference string
         String refStr = textField.getText().trim();
         String[] refParts = refStr.split("\\s+");
         int[] referenceString = new int[refParts.length];
+        
         for (int i = 0; i < refParts.length; i++) {
             try {
                 referenceString[i] = Integer.parseInt(refParts[i]);
@@ -388,7 +354,6 @@ public class Page extends JPanel {
             }
         }
 
-        // Parse frame size
         int frameSize;
         try {
             frameSize = Integer.parseInt(frameField.getText().trim());
@@ -397,7 +362,6 @@ public class Page extends JPanel {
             return;
         }
 
-        // Validate input
         if (!simulator.validateInput(referenceString, frameSize)) {
             error("Reference string must be 10-40 integers (0-20). Frame size must be 3-10.");
             return;
@@ -409,73 +373,36 @@ public class Page extends JPanel {
             return;
         }
 
+        // --- SURGICALLY MAPPED NAMES FOR THE SIMULATOR ---
+        String algoName = selectedAlgo;
+        if (selectedAlgo.equals("OPT")) algoName = "Optimal";
+        else if (selectedAlgo.equals("Second chance algorithm")) algoName = "SecondChance";
+        else if (selectedAlgo.equals("Enhanced second chance algorithm")) algoName = "EnhancedSecondChance";
+
         if (selectedAlgo.equals("All Algorithms")) {
-            java.util.Map<String, SimulationResult> results = simulator.runAllAlgorithms(referenceString, frameSize);
-            mainframe.getResultPanel().displayMultipleResults(results);
-            mainframe.showCard("RESULT");
+            Map<String, SimulationResult> results = simulator.runAllAlgorithms(referenceString, frameSize);
+            mainframe.getResultPanel().startSimulation(results);
         } else {
-            String algoName = selectedAlgo;
-            if (algoName.equals("OPT"))
-                algoName = "Optimal";
-            if (algoName.equals("Second Chance Algorithm"))
-                algoName = "Second Chance";
-            if (algoName.equals("Enhanced Second Chance Algorithm"))
-                algoName = "Enhanced Second Chance";
             SimulationResult result = simulator.runAlgorithm(algoName, referenceString, frameSize);
             if (result == null) {
-                error("Algorithm not found.");
+                error("Algorithm not found: " + algoName);
                 return;
             }
-            mainframe.getResultPanel().displayResult(result.getAlgorithmName(), result);
-            mainframe.showCard("RESULT");
+            Map<String, SimulationResult> singleResultMap = new LinkedHashMap<>();
+            singleResultMap.put(result.getAlgorithmName(), result);
+            mainframe.getResultPanel().startSimulation(singleResultMap);
         }
+        
+        mainframe.showCard("RESULT");
     }
 
-    // =========================================================================
-    // Create scheduler based on algorithm name
-    // =========================================================================
-    /** Factory that returns a Scheduler implementation based on algorithm name. */
-    // private Scheduler createScheduler(String algorithmName, int quantumTime) {
-    // return switch (algorithmName) {
-    // case "First Come First Serve" -> new FCFS();
-    // case "Round Robin" -> new RoundRobin(quantumTime);
-    // case "SJF (Preemptive)" -> new SJFPreemptive();
-    // case "SJF (Non-preemptive)" -> new SJFNonPreemptive();
-    // case "Priority (Preemptive)" -> new
-    // PriorityPreemptive(higherIsHigherCheck.isSelected());
-    // case "Priority (Non-preemptive)" -> new
-    // PriorityNonPreemptive(higherIsHigherCheck.isSelected());
-    // default -> null;
-    // };
-    // }
-
-    // =========================================================================
-    // Validation helpers
-    // =========================================================================
-    /** Utility: return trimmed string representation or empty. */
-    private String trim(Object val) {
-        return val == null ? "" : val.toString().trim();
-    }
-
-    /** Parse integer safely, returning MIN_VALUE on failure. */
-    private int parseInt(Object val) {
-        try {
-            return Integer.parseInt(trim(val));
-        } catch (NumberFormatException e) {
-            return Integer.MIN_VALUE;
-        }
-    }
-
-    /** Show validation error message in dialog. */
     private void error(String msg) {
         JOptionPane.showMessageDialog(this, msg, "Invalid Input", JOptionPane.WARNING_MESSAGE);
     }
 
-    /** Read rows from an XLSX file's first worksheet. */
     private java.util.List<String[]> readXlsx(File file) throws Exception {
         java.util.List<String[]> rows = new java.util.ArrayList<>();
         try (ZipFile zip = new ZipFile(file)) {
-            // load shared strings table if present
             java.util.List<String> shared = new java.util.ArrayList<>();
             ZipEntry sst = zip.getEntry("xl/sharedStrings.xml");
             if (sst != null) {
@@ -509,8 +436,7 @@ public class Page extends JPanel {
                                     if (idx < shared.size()) {
                                         v = shared.get(idx);
                                     }
-                                } catch (NumberFormatException ignored) {
-                                }
+                                } catch (NumberFormatException ignored) { }
                             }
                         }
                         rowVals.add(v);
