@@ -189,6 +189,26 @@ public class Menu extends JPanel {
         JPanel rightBottom = new JPanel(new BorderLayout());
         rightBottom.setBackground(Mainframe.BG_LIGHT_GRAY);
         JLabel imageLabel = new JLabel("", SwingConstants.CENTER);
+        // Show cover image by default, but scale it dynamically like the others
+        ImageIcon coverIcon = new ImageIcon(getClass().getResource("/img/cover.png"));
+        // Use a default size for initial display
+        int defaultWidth = 400;
+        int defaultHeight = 300;
+        Image scaledCover = coverIcon.getImage().getScaledInstance(defaultWidth, defaultHeight, Image.SCALE_SMOOTH);
+        imageLabel.setIcon(new ImageIcon(scaledCover));
+
+        // Ensure the cover image always matches the size of the algorithm images
+        rightBottom.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int width = imageLabel.getWidth();
+                int height = imageLabel.getHeight();
+                if (width > 0 && height > 0 && algoList.getSelectedIndex() == -1) {
+                    Image scaled = coverIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                    imageLabel.setIcon(new ImageIcon(scaled));
+                }
+            }
+        });
         rightBottom.add(imageLabel, BorderLayout.CENTER);
 
         // WEIGHTY = 1.0 -> Tells layout to give all remaining vertical space to this
@@ -210,17 +230,29 @@ public class Menu extends JPanel {
                         ImageIcon icon = new ImageIcon(url);
                         int width = imageLabel.getWidth();
                         int height = imageLabel.getHeight();
-
-                        // Handle case where width/height might be 0 (component not yet sized)
                         if (width > 0 && height > 0) {
                             Image scaledImage = icon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
                             imageLabel.setIcon(new ImageIcon(scaledImage));
                         } else {
-                            // Fallback - use a reasonable default size
-                            Image scaledImage = icon.getImage().getScaledInstance(400, 300, Image.SCALE_SMOOTH);
+                            Image scaledImage = icon.getImage().getScaledInstance(defaultWidth, defaultHeight,
+                                    Image.SCALE_SMOOTH);
                             imageLabel.setIcon(new ImageIcon(scaledImage));
                         }
                     }
+                } else {
+                    // No selection: revert to cover image and scale to current label size
+                    int width = imageLabel.getWidth();
+                    int height = imageLabel.getHeight();
+                    if (width > 0 && height > 0) {
+                        Image scaledCover2 = coverIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                        imageLabel.setIcon(new ImageIcon(scaledCover2));
+                    } else {
+                        Image scaledCover2 = coverIcon.getImage().getScaledInstance(defaultWidth, defaultHeight,
+                                Image.SCALE_SMOOTH);
+                        imageLabel.setIcon(new ImageIcon(scaledCover2));
+                    }
+                    descriptionArea
+                            .setText("What does it do?:\n\nSelect an algorithm from the list to see its description.");
                 }
             }
         });
