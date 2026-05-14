@@ -21,7 +21,7 @@ public class Mainframe extends JFrame {
         setTitle("ReBoot");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         // prevent user from shrinking window too far
-        setMinimumSize(new Dimension(1500, 900));
+        setMinimumSize(new Dimension(1200, 800));
         setResizable(false);
         setLocationRelativeTo(null);
 

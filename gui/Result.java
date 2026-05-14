@@ -19,11 +19,12 @@ import javax.swing.border.EmptyBorder;
 
 public class Result extends JPanel {
     private final Mainframe mainframe;
-    private JPanel resultContainer;
+    private final JPanel resultContainer;
+    private final JScrollPane resultScrollPane;
     private JSlider speedSlider;
-    private javax.swing.Timer animTimer;
+    private final javax.swing.Timer animTimer;
 
-    private Queue<SimulationResult> resultsQueue = new LinkedList<>();
+    private final Queue<SimulationResult> resultsQueue = new LinkedList<>();
     private PageReplacementResultPanel currentPanel;
     private JPanel currentButtonPanel; // Tracks the active algorithm's button panel
     private int currentStep = 0;
@@ -40,13 +41,16 @@ public class Result extends JPanel {
         resultContainer.setLayout(new BoxLayout(resultContainer, BoxLayout.Y_AXIS));
         resultContainer.setOpaque(false);
 
-        JScrollPane scroll = new JScrollPane(resultContainer);
-        scroll.setOpaque(false);
-        scroll.getViewport().setOpaque(false);
-        scroll.setBorder(null);
-        // Speed up the scroll wheel
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        add(scroll, BorderLayout.CENTER);
+        resultScrollPane = new JScrollPane(resultContainer);
+        resultScrollPane.setOpaque(false);
+        resultScrollPane.getViewport().setOpaque(false);
+        resultScrollPane.setBorder(null);
+        resultScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        resultScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        resultScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        resultScrollPane.getHorizontalScrollBar().setUnitIncrement(24);
+        resultScrollPane.getHorizontalScrollBar().setBlockIncrement(120);
+        add(resultScrollPane, BorderLayout.CENTER);
 
         // Default timer fires every 500ms (can be adjusted by the slider)
         animTimer = new javax.swing.Timer(500, e -> updateAnimation());
@@ -119,6 +123,7 @@ public class Result extends JPanel {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(Color.WHITE);
         wrapper.setBorder(new EmptyBorder(15, 15, 15, 15));
+        wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // --- Individual PDF & Image Buttons attached below the grid ---
         currentButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -144,9 +149,7 @@ public class Result extends JPanel {
 
         wrapper.add(currentButtonPanel, BorderLayout.SOUTH);
 
-        JScrollPane innerScroll = new JScrollPane(currentPanel);
-        innerScroll.setBorder(null);
-        wrapper.add(innerScroll, BorderLayout.CENTER);
+        wrapper.add(currentPanel, BorderLayout.CENTER);
 
         resultContainer.add(wrapper);
         resultContainer.add(Box.createVerticalStrut(20));
