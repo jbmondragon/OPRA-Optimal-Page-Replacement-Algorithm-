@@ -26,44 +26,41 @@ public class SecondChanceAlgorithm implements Algorithm {
             // Check if page is already in frames
             for (int j = 0; j < frameSize; j++) {
                 if (frames[j].getPageNumber() == page) {
+                    // Page hit: set its reference bit to give it a second chance
                     frames[j].setReferenceBit(true);
-                    frames[j].setSecondChance(true);
                     found = true;
                     break;
                 }
             }
 
             if (!found) {
-                // Page fault - need to replace
+                // Page fault - find a victim using the clock hand
                 isFault = true;
 
                 while (true) {
                     if (frames[hand].getPageNumber() == -1) {
-                        // Empty frame found
+                        // Empty frame: load page here
                         frames[hand] = new SecondChanceFrame(page);
                         frames[hand].setReferenceBit(true);
-                        frames[hand].setSecondChance(true);
                         hand = (hand + 1) % frameSize;
                         break;
                     }
 
-                    if (frames[hand].hasSecondChance()) {
-                        // Give second chance
-                        frames[hand].setSecondChance(false);
+                    if (frames[hand].hasReferenceBit()) {
+                        // Page has a second chance: clear its bit and move on
                         frames[hand].setReferenceBit(false);
                         hand = (hand + 1) % frameSize;
                     } else {
-                        // Replace this page
+                        // Reference bit is 0: replace this page
                         frames[hand] = new SecondChanceFrame(page);
                         frames[hand].setReferenceBit(true);
-                        frames[hand].setSecondChance(true);
                         hand = (hand + 1) % frameSize;
                         break;
                     }
                 }
             }
 
-            // Update current frames array
+            // Update current frames array for result recording
             for (int j = 0; j < frameSize; j++) {
                 currentFrames[j] = frames[j].getPageNumber();
             }
@@ -75,28 +72,19 @@ public class SecondChanceAlgorithm implements Algorithm {
         return result;
     }
 
-    // Inner class for Second Chance frames
+    // Inner class for Second Chance frames.
+    // Uses a single reference bit: true = page gets a second chance, false = eligible for replacement.
     private static class SecondChanceFrame {
         private int pageNumber;
-        private boolean secondChance;
         private boolean referenceBit;
 
         public SecondChanceFrame(int pageNumber) {
             this.pageNumber = pageNumber;
-            this.secondChance = true;
-            this.referenceBit = true;
+            this.referenceBit = false;
         }
 
         public int getPageNumber() {
             return pageNumber;
-        }
-
-        public boolean hasSecondChance() {
-            return secondChance;
-        }
-
-        public void setSecondChance(boolean chance) {
-            this.secondChance = chance;
         }
 
         public boolean hasReferenceBit() {

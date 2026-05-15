@@ -31,19 +31,23 @@ public class MFUAlgorithm implements Algorithm {
                 isFault = true;
 
                 if (frames.size() < frameSize) {
-                    // Add to empty frame
+                    // Empty frame available: load the page
+                    currentPage.resetFrequency();     // start fresh (handles re-entry after eviction)
                     currentPage.setLoaded(true);
-                    currentPage.incrementFrequency();
+                    currentPage.incrementFrequency(); // frequency = 1 on first use
+                    currentPage.setLastUsedTime(i);
                     frames.add(currentPage);
                 } else {
-                    // Find most frequently used page
+                    // Frames full: evict the Most Frequently Used page
                     MFUPage mfuPage = findMFUPage(frames);
                     mfuPage.setLoaded(false);
                     frames.remove(mfuPage);
 
-                    // Add new page
+                    // Load the incoming page with a fresh frequency count
+                    currentPage.resetFrequency();
                     currentPage.setLoaded(true);
-                    currentPage.incrementFrequency();
+                    currentPage.incrementFrequency(); // frequency = 1 on first use
+                    currentPage.setLastUsedTime(i);
                     frames.add(currentPage);
                 }
             } else {
@@ -61,6 +65,11 @@ public class MFUAlgorithm implements Algorithm {
         return result;
     }
 
+    /**
+     * Returns the frame holding the Most Frequently Used page.
+     * Tie-break: evict the page that was least recently used (smallest lastUsedTime),
+     * which matches standard LRU-based tie-breaking for MFU.
+     */
     private MFUPage findMFUPage(List<MFUPage> frames) {
         MFUPage mfu = frames.get(0);
         for (MFUPage page : frames) {
@@ -107,6 +116,10 @@ public class MFUAlgorithm implements Algorithm {
 
         public void incrementFrequency() {
             this.frequency++;
+        }
+
+        public void resetFrequency() {
+            this.frequency = 0;
         }
 
         public int getLastUsedTime() {
